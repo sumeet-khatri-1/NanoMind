@@ -1,0 +1,2077 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nano-Mind | AI Story Generator — C++ Inference Engine</title>
+    <meta name="description"
+        content="Nano-Mind is a lightweight GPT-2-style story generation model powered by a custom C++17 inference engine with AVX2/FMA optimization. Generate stories directly in your browser.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:ital@0;1&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================
+           DESIGN SYSTEM
+           ============================================ */
+        :root {
+            --bg-color: #FFFDD0;
+            --bg-subtle: #faf8e8;
+            --text-main: #111;
+            --text-muted: #555;
+            --text-light: #777;
+            --green: #4ade80;
+            --green-dark: #16a34a;
+            --green-light: #d1fae5;
+            --green-bg: #f0fdf4;
+            --white: #ffffff;
+            --red: #dc2626;
+            --red-light: #fee2e2;
+            --border-radius: 16px;
+            --shadow-sm: 3px 3px 0 #111;
+            --shadow-md: 6px 6px 0 #111;
+            --shadow-lg: 10px 10px 0 #111;
+            --border: 3px solid var(--text-main);
+            --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            --font-serif: 'Lora', Georgia, serif;
+            --transition: 0.2s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* ============================================
+           HEADER
+           ============================================ */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            margin-bottom: 4rem;
+        }
+
+        .logo {
+            font-weight: 800;
+            font-size: 1.15rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-main);
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--green);
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .logo span {
+            color: var(--green-dark);
+        }
+
+        nav {
+            display: flex;
+            gap: 1.75rem;
+            align-items: center;
+        }
+
+        nav a {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: color var(--transition);
+        }
+
+        nav a:hover {
+            color: var(--text-main);
+        }
+
+        .github-btn {
+            background: var(--text-main);
+            color: var(--white);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background var(--transition);
+            border: var(--border);
+        }
+
+        .github-btn:hover {
+            background: #333;
+        }
+
+        /* Mobile nav toggle */
+        .nav-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .nav-toggle span {
+            display: block;
+            width: 24px;
+            height: 2px;
+            background: var(--text-main);
+            margin: 5px 0;
+            transition: var(--transition);
+        }
+
+        /* ============================================
+           HERO
+           ============================================ */
+        .hero {
+            display: flex;
+            align-items: center;
+            gap: 4rem;
+            margin-bottom: 5rem;
+        }
+
+        .hero-content {
+            flex: 1.2;
+        }
+
+        .hero-tag {
+            display: inline-block;
+            background: var(--green-light);
+            color: var(--green-dark);
+            padding: 0.3rem 0.9rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            border: 2px solid var(--green-dark);
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            line-height: 1.1;
+            font-weight: 800;
+            margin-bottom: 1.25rem;
+            letter-spacing: -1.5px;
+        }
+
+        .hero h1 .accent {
+            color: var(--green-dark);
+        }
+
+        .hero-sub {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            max-width: 520px;
+            line-height: 1.7;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 2.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: var(--text-main);
+            color: var(--white);
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all var(--transition);
+            border: var(--border);
+            cursor: pointer;
+            font-family: var(--font-sans);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-primary:hover {
+            background: #222;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-primary:active {
+            transform: translateY(1px);
+            box-shadow: 1px 1px 0 #111;
+        }
+
+        .btn-secondary {
+            background: var(--white);
+            color: var(--text-main);
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: var(--border);
+            transition: all var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary:hover {
+            background: #f9f9f9;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .hero-features {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--green-light);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .feature-text h4 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin-bottom: 0;
+        }
+
+        .feature-text p {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin: 0;
+        }
+
+        .hero-image {
+            flex: 0.8;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .hero-card {
+            background: #0a0a0a;
+            border-radius: 20px;
+            padding: 2.5rem;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 420px;
+            border: var(--border);
+        }
+
+        .hero-card img {
+            width: 100%;
+            max-width: 260px;
+            margin-bottom: 1.5rem;
+            border-radius: 8px;
+        }
+
+        .hero-card h3 {
+            color: var(--white);
+            font-size: 1.8rem;
+            letter-spacing: 2px;
+            margin-bottom: 0.4rem;
+            font-weight: 300;
+        }
+
+        .hero-card h3 span {
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        .hero-card p {
+            color: #888;
+            font-size: 0.85rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin: 0;
+        }
+
+        /* ============================================
+           STORY GENERATOR
+           ============================================ */
+        .generator-section {
+            background: var(--white);
+            border: var(--border);
+            border-radius: var(--border-radius);
+            padding: 2.5rem;
+            margin-bottom: 5rem;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .generator-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .generator-header .section-tag {
+            margin-bottom: 0.5rem;
+        }
+
+        .generator-header h2 {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            background: var(--bg-color);
+            margin-top: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ccc;
+            transition: background var(--transition);
+        }
+
+        .status-dot.online {
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
+        }
+
+        .status-dot.offline {
+            background: var(--red);
+        }
+
+        .prompt-label {
+            display: block;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-main);
+        }
+
+        .prompt-textarea {
+            width: 100%;
+            height: 120px;
+            border: var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            font-family: var(--font-sans);
+            font-size: 1rem;
+            resize: vertical;
+            box-shadow: var(--shadow-sm);
+            outline: none;
+            transition: box-shadow var(--transition);
+            background: var(--white);
+            color: var(--text-main);
+        }
+
+        .prompt-textarea:focus {
+            box-shadow: var(--shadow-md);
+            border-color: var(--green-dark);
+        }
+
+        .prompt-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .prompt-chip {
+            background: var(--bg-color);
+            border: 2px solid var(--text-main);
+            border-radius: 20px;
+            padding: 0.35rem 0.9rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition);
+            font-family: var(--font-sans);
+            color: var(--text-main);
+        }
+
+        .prompt-chip:hover {
+            background: var(--green-light);
+            border-color: var(--green-dark);
+            transform: translateY(-1px);
+        }
+
+        .prompt-chip:active {
+            transform: translateY(0);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 0.4rem;
+            color: var(--text-main);
+        }
+
+        .control-group .control-value {
+            color: var(--green-dark);
+            font-weight: 700;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: var(--green-dark);
+            height: 6px;
+        }
+
+        .generate-btn {
+            width: 100%;
+            justify-content: center;
+            font-size: 1.15rem;
+            padding: 1rem;
+            border: var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: var(--shadow-sm) !important;
+        }
+
+        /* ============================================
+           STORY OUTPUT
+           ============================================ */
+        .story-output {
+            display: none;
+            margin-top: 1.5rem;
+            animation: fadeInUp 0.4s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .story-card {
+            background: var(--bg-color);
+            border: var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .story-card-header {
+            background: var(--text-main);
+            color: var(--white);
+            padding: 0.6rem 1.25rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .story-card-body {
+            padding: 1.5rem;
+            min-height: 100px;
+        }
+
+        .story-text {
+            font-family: var(--font-serif);
+            font-size: 1.05rem;
+            line-height: 1.8;
+            color: var(--text-main);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .story-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1.2em;
+            background-color: var(--green-dark);
+            vertical-align: middle;
+            animation: cursorBlink 1s step-end infinite;
+            margin-left: 2px;
+        }
+
+        @keyframes cursorBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .story-metrics {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            border-top: 2px dashed rgba(0, 0, 0, 0.15);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            flex-wrap: wrap;
+        }
+
+        .story-metrics .metric-sep {
+            color: #ccc;
+        }
+
+        .story-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .story-action-btn {
+            background: var(--white);
+            border: 2px solid var(--text-main);
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            transition: all var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-main);
+        }
+
+        .story-action-btn:hover {
+            background: var(--bg-color);
+            transform: translateY(-1px);
+            box-shadow: 2px 2px 0 var(--text-main);
+        }
+
+        .copy-toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--text-main);
+            color: var(--white);
+            padding: 0.6rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            pointer-events: none;
+        }
+
+        .copy-toast.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .error-message {
+            display: none;
+            color: var(--red);
+            font-weight: 600;
+            border: 3px solid var(--red);
+            padding: 1rem;
+            border-radius: 12px;
+            background: var(--red-light);
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* ============================================
+           SECTION UTILITIES
+           ============================================ */
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .section-tag {
+            color: var(--green-dark);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+        }
+
+        .section-header h2 {
+            font-size: 2.25rem;
+            margin-bottom: 0.75rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* ============================================
+           STATS
+           ============================================ */
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 5rem;
+        }
+
+        .stat-card {
+            background: var(--white);
+            border: var(--border);
+            border-radius: 14px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+            transition: all var(--transition);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .stat-card .stat-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--green-light);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.75rem;
+            font-size: 1.25rem;
+        }
+
+        .stat-card h3 {
+            font-size: 1.1rem;
+            font-weight: 800;
+            margin-bottom: 0.2rem;
+            letter-spacing: -0.5px;
+        }
+
+        .stat-card p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin: 0;
+        }
+
+        /* ============================================
+           HOW IT WORKS
+           ============================================ */
+        .steps-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            position: relative;
+            margin-bottom: 5rem;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            width: 28px;
+            height: 28px;
+            background: var(--green);
+            color: var(--text-main);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 800;
+            margin-bottom: 0.75rem;
+            border: 2px solid var(--text-main);
+        }
+
+        .step-icon-box {
+            width: 72px;
+            height: 72px;
+            background: var(--white);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            color: var(--text-main);
+            border: var(--border);
+            transition: all var(--transition);
+        }
+
+        .step:hover .step-icon-box {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .step h4 {
+            margin-bottom: 0.3rem;
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .step p {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            max-width: 180px;
+            line-height: 1.4;
+        }
+
+        .step-arrow {
+            position: absolute;
+            right: -12px;
+            top: 70px;
+            color: var(--green);
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        /* ============================================
+           TECH STACK
+           ============================================ */
+        .tech-stack {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            padding: 2.5rem;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 5rem;
+            border: var(--border);
+        }
+
+        .tech-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .tech-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.6rem 1.25rem;
+            background: var(--white);
+            border: var(--border);
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: var(--shadow-sm);
+            transition: all var(--transition);
+        }
+
+        .tech-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--green-dark);
+        }
+
+        .tech-icon {
+            font-size: 1.1rem;
+        }
+
+        /* ============================================
+           ARCHITECTURE
+           ============================================ */
+        .architecture-section {
+            margin-bottom: 5rem;
+        }
+
+        .arch-pipeline {
+            max-width: 700px;
+            margin: 0 auto;
+            background: #0a0a0a;
+            border: var(--border);
+            border-radius: var(--border-radius);
+            padding: 2.5rem;
+            box-shadow: var(--shadow-lg);
+            color: var(--white);
+        }
+
+        .arch-node {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 0.75rem 0;
+        }
+
+        .arch-node-icon {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            background: rgba(74, 222, 128, 0.15);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .arch-node-content h4 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--green);
+            margin-bottom: 0.15rem;
+        }
+
+        .arch-node-content p {
+            font-size: 0.8rem;
+            color: #aaa;
+            line-height: 1.4;
+        }
+
+        .arch-arrow {
+            text-align: center;
+            color: #555;
+            font-size: 0.9rem;
+            padding: 0.15rem 0;
+            padding-left: 16px;
+        }
+
+        .arch-sub-nodes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            margin-left: 56px;
+        }
+
+        .arch-sub-node {
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.25);
+            border-radius: 6px;
+            padding: 0.3rem 0.7rem;
+            font-size: 0.7rem;
+            color: var(--green);
+            font-weight: 500;
+        }
+
+        /* ============================================
+           PERFORMANCE
+           ============================================ */
+        .perf-section {
+            margin-bottom: 5rem;
+        }
+
+        .perf-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            max-width: 700px;
+            margin: 0 auto 1.5rem;
+        }
+
+        .perf-card {
+            background: var(--white);
+            border: var(--border);
+            border-radius: 14px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .perf-card .perf-value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--green-dark);
+            margin-bottom: 0.2rem;
+            letter-spacing: -1px;
+        }
+
+        .perf-card .perf-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 0.1rem;
+        }
+
+        .perf-card .perf-desc {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .perf-note {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+            font-size: 0.8rem;
+            color: var(--text-light);
+            line-height: 1.5;
+            background: var(--bg-subtle);
+            padding: 1rem;
+            border-radius: 10px;
+            border: 2px solid rgba(0,0,0,0.06);
+        }
+
+        .perf-note strong {
+            color: var(--text-muted);
+        }
+
+        /* ============================================
+           VIDEO
+           ============================================ */
+        .video-section {
+            display: flex;
+            align-items: center;
+            gap: 3rem;
+            margin-bottom: 5rem;
+        }
+
+        .video-text {
+            flex: 1;
+        }
+
+        .video-text h2 {
+            font-size: 2rem;
+            margin-bottom: 0.75rem;
+            line-height: 1.2;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+
+        .video-text p {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .video-player {
+            flex: 1.3;
+        }
+
+        .video-wrapper {
+            position: relative;
+            padding-bottom: 56.25%;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            background: #000;
+            border: var(--border);
+        }
+
+        .video-wrapper iframe,
+        .video-wrapper img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .play-btn-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 72px;
+            height: 72px;
+            background: rgba(22, 163, 74, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: transform var(--transition);
+        }
+
+        #video-thumb:hover .play-btn-overlay {
+            transform: translate(-50%, -50%) scale(1.08);
+        }
+
+        .play-btn-overlay div {
+            width: 0;
+            height: 0;
+            border-top: 13px solid transparent;
+            border-bottom: 13px solid transparent;
+            border-left: 22px solid white;
+            margin-left: 4px;
+        }
+
+        /* ============================================
+           SOURCE CODE
+           ============================================ */
+        .source-section {
+            background: var(--white);
+            border: var(--border);
+            border-radius: var(--border-radius);
+            padding: 3rem;
+            margin-bottom: 5rem;
+            box-shadow: var(--shadow-sm);
+            text-align: center;
+        }
+
+        .source-section h2 {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            letter-spacing: -0.5px;
+        }
+
+        .source-section p {
+            color: var(--text-muted);
+            font-size: 1rem;
+            max-width: 600px;
+            margin: 0 auto 1rem;
+            line-height: 1.6;
+        }
+
+        .source-features {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.6rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .source-feature {
+            background: var(--green-light);
+            border: 2px solid var(--green-dark);
+            border-radius: 6px;
+            padding: 0.3rem 0.7rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--green-dark);
+        }
+
+        /* ============================================
+           FOOTER
+           ============================================ */
+        footer {
+            border-top: var(--border);
+            padding: 2.5rem 0;
+            margin-top: 2rem;
+        }
+
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-brand {
+            font-weight: 800;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .footer-brand span {
+            color: var(--green-dark);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: color var(--transition);
+        }
+
+        .footer-links a:hover {
+            color: var(--text-main);
+        }
+
+        .footer-copy {
+            width: 100%;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        /* ============================================
+           RESPONSIVE
+           ============================================ */
+        @media (max-width: 1024px) {
+            .hero {
+                gap: 2rem;
+            }
+
+            .hero h1 {
+                font-size: 2.75rem;
+            }
+
+            .controls-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 1.25rem;
+            }
+
+            header {
+                margin-bottom: 2.5rem;
+            }
+
+            nav {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: var(--bg-color);
+                flex-direction: column;
+                padding: 1rem 2rem;
+                border-bottom: var(--border);
+                gap: 1rem;
+                z-index: 100;
+            }
+
+            nav.open {
+                display: flex;
+            }
+
+            .nav-toggle {
+                display: block;
+            }
+
+            header {
+                position: relative;
+            }
+
+            .hero {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .hero h1 {
+                font-size: 2.25rem;
+            }
+
+            .hero-sub {
+                margin: 0 auto 2rem;
+            }
+
+            .hero-actions {
+                justify-content: center;
+            }
+
+            .hero-features {
+                justify-content: center;
+            }
+
+            .hero-image {
+                justify-content: center;
+            }
+
+            .hero-card {
+                max-width: 320px;
+            }
+
+            .stats-section {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .steps-container {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.5rem;
+            }
+
+            .step-arrow {
+                display: none;
+            }
+
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .video-section {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .video-text {
+                order: 2;
+            }
+
+            .video-player {
+                order: 1;
+                width: 100%;
+            }
+
+            .perf-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .arch-sub-nodes {
+                margin-left: 0;
+            }
+
+            .generator-section {
+                padding: 1.5rem;
+            }
+
+            .source-section {
+                padding: 2rem 1.5rem;
+            }
+
+            .footer-inner {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .footer-links {
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 {
+                font-size: 1.75rem;
+            }
+
+            .stats-section {
+                grid-template-columns: 1fr;
+            }
+
+            .steps-container {
+                grid-template-columns: 1fr;
+            }
+
+            .section-header h2 {
+                font-size: 1.75rem;
+            }
+
+            .prompt-chips {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <!-- ============================================
+             HEADER
+             ============================================ -->
+        <header>
+            <a href="#" class="logo">
+                <span class="logo-dot"></span> NANO-<span>MIND</span>
+            </a>
+
+            <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+
+            <nav id="mainNav">
+                <a href="#generator">Generator</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#architecture">Architecture</a>
+                <a href="#performance">Performance</a>
+                <a href="https://github.com/sumeet1212khatri/Nano-Mind" target="_blank" class="github-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22">
+                        </path>
+                    </svg>
+                    Star on GitHub
+                </a>
+            </nav>
+        </header>
+
+        <!-- ============================================
+             HERO
+             ============================================ -->
+        <section class="hero" id="features">
+            <div class="hero-content">
+                <div class="hero-tag">Story Generation Engine</div>
+                <h1>Turn an idea<br>into a <span class="accent">story.</span></h1>
+                <p class="hero-sub">Nano-Mind is a lightweight GPT-2-style language model running on a custom C++
+                    inference engine. Give it a story idea and generate text directly in your browser.</p>
+
+                <div class="hero-actions">
+                    <a href="#generator" class="btn-primary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 20h9"></path>
+                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                        Generate a Story
+                    </a>
+                    <a href="https://github.com/sumeet1212khatri/Nano-Mind" target="_blank" class="btn-secondary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M16 18l6-6-6-6M8 6l-6 6 6 6"></path>
+                        </svg>
+                        View Source
+                    </a>
+                </div>
+
+                <div class="hero-features">
+                    <div class="feature-item">
+                        <div class="feature-icon">⚙️</div>
+                        <div class="feature-text">
+                            <h4>CPU Inference</h4>
+                            <p>No GPU required</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">🔧</div>
+                        <div class="feature-text">
+                            <h4>C++17 Engine</h4>
+                            <p>Custom built</p>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">📖</div>
+                        <div class="feature-text">
+                            <h4>Story Trained</h4>
+                            <p>GPT-2 story dataset</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-image">
+                <div class="hero-card">
+                    <img src="https://github.com/user-attachments/assets/396dac9c-4256-48d7-808b-8fc4718df27a"
+                        alt="Nano-Mind Logo" style="filter: brightness(0.8) contrast(1.2);">
+                    <h3>NANO-<span>MIND</span></h3>
+                    <p>C++ Inference Engine</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================
+             STORY GENERATOR
+             ============================================ -->
+        <section class="generator-section" id="generator">
+            <div class="generator-header">
+                <div class="section-tag">Try It Out</div>
+                <h2>Create a Story</h2>
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">Checking server…</span>
+                </div>
+            </div>
+
+            <div>
+                <label for="promptInput" class="prompt-label">Story Idea</label>
+                <textarea id="promptInput" class="prompt-textarea"
+                    placeholder="Enter a story idea…" aria-label="Enter your story idea"></textarea>
+
+                <div class="prompt-chips" role="group" aria-label="Example story prompts">
+                    <button class="prompt-chip" type="button">mystery in an old house</button>
+                    <button class="prompt-chip" type="button">space adventure</button>
+                    <button class="prompt-chip" type="button">robot and a lost child</button>
+                    <button class="prompt-chip" type="button">dark forest</button>
+                    <button class="prompt-chip" type="button">train station at midnight</button>
+                </div>
+
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label for="maxTokens">Maximum Tokens: <span class="control-value"
+                                id="maxTokensVal">100</span></label>
+                        <input type="range" id="maxTokens" min="1" max="500" value="100"
+                            oninput="document.getElementById('maxTokensVal').textContent = this.value">
+                    </div>
+                    <div class="control-group">
+                        <label for="temperature">Temperature: <span class="control-value"
+                                id="tempVal">0.8</span></label>
+                        <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.8"
+                            oninput="document.getElementById('tempVal').textContent = this.value">
+                    </div>
+                    <div class="control-group">
+                        <label for="topK">Top-K: <span class="control-value" id="topKVal">40</span></label>
+                        <input type="range" id="topK" min="1" max="100" value="40"
+                            oninput="document.getElementById('topKVal').textContent = this.value">
+                    </div>
+                </div>
+
+                <button id="generateBtn" class="btn-primary generate-btn" type="button">
+                    Generate Story
+                </button>
+
+                <!-- Story Output -->
+                <div class="story-output" id="storyOutput">
+                    <div class="story-card">
+                        <div class="story-card-header">Your Story</div>
+                        <div class="story-card-body">
+                            <div class="story-text" id="storyText"></div>
+                            <span class="story-cursor" id="storyCursor"></span>
+                        </div>
+                        <div class="story-metrics" id="storyMetrics">
+                            <span id="metricSummary">—</span>
+                        </div>
+                    </div>
+
+                    <div class="story-actions">
+                        <button class="story-action-btn" id="copyBtn" type="button">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                            Copy Story
+                        </button>
+                        <button class="story-action-btn" id="generateAgainBtn" type="button">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"></polyline>
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                            </svg>
+                            Generate Again
+                        </button>
+                        <button class="story-action-btn" id="clearBtn" type="button">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                            Clear
+                        </button>
+                    </div>
+                </div>
+
+                <div class="error-message" id="errorMessage"></div>
+            </div>
+        </section>
+
+        <!-- ============================================
+             STATS
+             ============================================ -->
+        <section class="stats-section">
+            <div class="stat-card">
+                <div class="stat-icon">⚙️</div>
+                <h3>CPU Inference</h3>
+                <p>No GPU required</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔧</div>
+                <h3>C++17</h3>
+                <p>Modern standard</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⚡</div>
+                <h3>AVX2 + FMA</h3>
+                <p>SIMD optimization</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔄</div>
+                <h3>OpenMP</h3>
+                <p>Multi-threaded</p>
+            </div>
+        </section>
+
+        <!-- ============================================
+             HOW IT WORKS
+             ============================================ -->
+        <section id="how-it-works">
+            <div class="section-header">
+                <div class="section-tag">How It Works</div>
+                <h2>From idea to story in four steps.</h2>
+                <p>Your prompt travels through a complete inference pipeline built from scratch.</p>
+            </div>
+
+            <div class="steps-container">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-icon-box">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 20h9"></path>
+                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                        </svg>
+                    </div>
+                    <h4>Enter a Story Idea</h4>
+                    <p>Write a creative prompt or pick a suggestion.</p>
+                    <div class="step-arrow">→</div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-icon-box">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="16 18 22 12 16 6"></polyline>
+                            <polyline points="8 6 2 12 8 18"></polyline>
+                        </svg>
+                    </div>
+                    <h4>Tokenize</h4>
+                    <p>FastAPI + tiktoken encode the prompt using GPT-2 BPE.</p>
+                    <div class="step-arrow">→</div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-icon-box">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                            <rect x="9" y="9" width="6" height="6"></rect>
+                            <line x1="9" y1="1" x2="9" y2="4"></line>
+                            <line x1="15" y1="1" x2="15" y2="4"></line>
+                            <line x1="9" y1="20" x2="9" y2="23"></line>
+                            <line x1="15" y1="20" x2="15" y2="23"></line>
+                            <line x1="20" y1="9" x2="23" y2="9"></line>
+                            <line x1="20" y1="14" x2="23" y2="14"></line>
+                            <line x1="1" y1="9" x2="4" y2="9"></line>
+                            <line x1="1" y1="14" x2="4" y2="14"></line>
+                        </svg>
+                    </div>
+                    <h4>Generate Tokens</h4>
+                    <p>C++17 transformer forward pass with KV-cache and Top-K sampling.</p>
+                    <div class="step-arrow">→</div>
+                </div>
+
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-icon-box">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                    </div>
+                    <h4>Decode &amp; Display</h4>
+                    <p>Generated tokens are decoded back to text and displayed as your story.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================
+             TECH STACK
+             ============================================ -->
+        <section class="tech-stack" id="source">
+            <div class="section-header" style="margin-bottom: 1.5rem;">
+                <div class="section-tag">Tech Stack</div>
+                <p>The tools and technology that power Nano-Mind.</p>
+            </div>
+            <div class="tech-grid">
+                <div class="tech-badge"><span class="tech-icon">⚙️</span> C++17</div>
+                <div class="tech-badge"><span class="tech-icon">🐍</span> Python</div>
+                <div class="tech-badge"><span class="tech-icon">⚡</span> FastAPI</div>
+                <div class="tech-badge"><span class="tech-icon">🔤</span> tiktoken</div>
+                <div class="tech-badge"><span class="tech-icon">🚀</span> AVX2/FMA</div>
+                <div class="tech-badge"><span class="tech-icon">🔄</span> OpenMP</div>
+                <div class="tech-badge"><span class="tech-icon">🐳</span> Docker</div>
+                <div class="tech-badge"><span class="tech-icon">🤗</span> Hugging Face Spaces</div>
+            </div>
+        </section>
+
+        <!-- ============================================
+             ARCHITECTURE
+             ============================================ -->
+        <section class="architecture-section" id="architecture">
+            <div class="section-header">
+                <div class="section-tag">Architecture</div>
+                <h2>System Architecture</h2>
+                <p>The complete inference pipeline from your browser to the generated story.</p>
+            </div>
+
+            <div class="arch-pipeline">
+                <div class="arch-node">
+                    <div class="arch-node-icon">🌐</div>
+                    <div class="arch-node-content">
+                        <h4>Browser</h4>
+                        <p>Frontend sends POST request with prompt and generation parameters.</p>
+                    </div>
+                </div>
+                <div class="arch-arrow">↓</div>
+
+                <div class="arch-node">
+                    <div class="arch-node-icon">⚡</div>
+                    <div class="arch-node-content">
+                        <h4>FastAPI REST API</h4>
+                        <p>Python backend receives the request and orchestrates the pipeline.</p>
+                    </div>
+                </div>
+                <div class="arch-arrow">↓</div>
+
+                <div class="arch-node">
+                    <div class="arch-node-icon">🔤</div>
+                    <div class="arch-node-content">
+                        <h4>tiktoken GPT-2 BPE</h4>
+                        <p>Encodes the text prompt into token IDs for the transformer.</p>
+                    </div>
+                </div>
+                <div class="arch-arrow">↓</div>
+
+                <div class="arch-node">
+                    <div class="arch-node-icon">⚙️</div>
+                    <div class="arch-node-content">
+                        <h4>C++17 Inference Engine</h4>
+                        <p>Custom transformer implementation with CPU-level optimization.</p>
+                    </div>
+                </div>
+                <div class="arch-arrow">↓</div>
+
+                <div class="arch-node">
+                    <div class="arch-node-icon">🧠</div>
+                    <div class="arch-node-content">
+                        <h4>Transformer Forward Pass</h4>
+                        <p>Processes tokens through the model layers to generate new tokens.</p>
+                    </div>
+                </div>
+
+                <div class="arch-sub-nodes">
+                    <span class="arch-sub-node">Multi-Head Self-Attention</span>
+                    <span class="arch-sub-node">KV-Cache</span>
+                    <span class="arch-sub-node">LayerNorm</span>
+                    <span class="arch-sub-node">GELU</span>
+                    <span class="arch-sub-node">Top-K Sampling</span>
+                </div>
+
+                <div class="arch-arrow" style="margin-top: 0.5rem;">↓</div>
+
+                <div class="arch-node">
+                    <div class="arch-node-icon">📖</div>
+                    <div class="arch-node-content">
+                        <h4>Generated Story</h4>
+                        <p>Tokens decoded back to text and returned to the browser.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================
+             PERFORMANCE
+             ============================================ -->
+        <section class="perf-section" id="performance">
+            <div class="section-header">
+                <div class="section-tag">Performance</div>
+                <h2>Live Hugging Face Benchmark</h2>
+                <p>Verified performance from 20 successful requests to the deployed backend.</p>
+            </div>
+
+            <div class="perf-grid">
+                <div class="perf-card">
+                    <div class="perf-value">49.7 <span style="font-size: 0.9rem; font-weight: 600;">t/s</span></div>
+                    <div class="perf-label">Median End-to-End Throughput</div>
+                    <div class="perf-desc">Tokens generated per second</div>
+                </div>
+                <div class="perf-card">
+                    <div class="perf-value">1,594 <span style="font-size: 0.9rem; font-weight: 600;">ms</span></div>
+                    <div class="perf-label">Median End-to-End Latency</div>
+                    <div class="perf-desc">Total round-trip time</div>
+                </div>
+                <div class="perf-card">
+                    <div class="perf-value">825 <span style="font-size: 0.9rem; font-weight: 600;">ms</span></div>
+                    <div class="perf-label">Server-Side Inference Latency</div>
+                    <div class="perf-desc">C++ engine processing time</div>
+                </div>
+                <div class="perf-card">
+                    <div class="perf-value">20/20</div>
+                    <div class="perf-label">Successful Requests</div>
+                    <div class="perf-desc">100% success rate</div>
+                </div>
+            </div>
+
+            <div class="perf-note">
+                <strong>Note:</strong> End-to-end throughput includes network latency, Hugging Face proxy, FastAPI
+                processing, tokenization, C++ inference, decoding, and response handling. Server-side latency reflects
+                only the C++ inference engine.
+            </div>
+        </section>
+
+        <!-- ============================================
+             VIDEO
+             ============================================ -->
+        <section class="video-section" id="demo">
+            <div class="video-text">
+                <div class="section-tag" style="text-align: left;">See It In Action</div>
+                <h2>See the story generator<br>in action.</h2>
+                <p>Watch Nano-Mind turn a prompt into generated text through its C++ inference engine.</p>
+                <a href="https://youtu.be/OBEMQljAUis" target="_blank" class="btn-primary"
+                    style="display: inline-flex;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z" />
+                    </svg> Watch Demo
+                </a>
+            </div>
+
+            <div class="video-player">
+                <a id="video-thumb" href="https://youtu.be/OBEMQljAUis" target="_blank"
+                    style="display: block; text-decoration: none;">
+                    <div class="video-wrapper">
+                        <img src="https://img.youtube.com/vi/OBEMQljAUis/maxresdefault.jpg"
+                            alt="Nano-Mind Story Generator Demo Video">
+                        <div class="play-btn-overlay">
+                            <div></div>
+                        </div>
+                    </div>
+                </a>
+
+                <div id="video-embed" class="video-wrapper" style="display: none;">
+                    <iframe data-src="https://www.youtube.com/embed/OBEMQljAUis" title="Nano-Mind Demo" frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen></iframe>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================
+             SOURCE CODE
+             ============================================ -->
+        <section class="source-section" id="source-code">
+            <div class="section-tag">Open Source</div>
+            <h2>Built from the engine up.</h2>
+            <p>Unlike applications that simply call a hosted LLM API, Nano-Mind includes a custom C++ transformer
+                inference implementation with CPU-level optimization.</p>
+
+            <div class="source-features">
+                <span class="source-feature">Transformer Forward Pass</span>
+                <span class="source-feature">KV-Cache</span>
+                <span class="source-feature">AVX2/FMA</span>
+                <span class="source-feature">OpenMP</span>
+                <span class="source-feature">Custom Binary Model Loading</span>
+            </div>
+
+            <p style="margin-bottom: 1.5rem;">Explore the full implementation on GitHub.</p>
+
+            <a href="https://github.com/sumeet1212khatri/Nano-Mind" target="_blank" class="btn-primary"
+                style="display: inline-flex;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                        d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22">
+                    </path>
+                </svg>
+                View Source Code
+            </a>
+        </section>
+
+    </div>
+
+    <!-- ============================================
+         FOOTER
+         ============================================ -->
+    <footer>
+        <div class="container">
+            <div class="footer-inner">
+                <div class="footer-brand">
+                    <span class="logo-dot"></span> NANO-<span>MIND</span>
+                </div>
+                <div class="footer-links">
+                    <a href="https://nanomind.qd.je/" target="_blank">Live Demo</a>
+                    <a href="https://huggingface.co/spaces/NOT-OMEGA/NanoMind" target="_blank">Hugging Face</a>
+                    <a href="https://github.com/sumeet1212khatri/Nano-Mind" target="_blank">GitHub</a>
+                    <a href="https://www.youtube.com/watch?v=OBEMQljAUis" target="_blank">YouTube</a>
+                </div>
+            </div>
+            <div class="footer-copy">
+                Nano-Mind — AI Story Generator · C++ Inference Engine
+            </div>
+        </div>
+    </footer>
+
+    <!-- Copy Toast -->
+    <div class="copy-toast" id="copyToast">✓ Story copied to clipboard</div>
+
+    <!-- ============================================
+         SCRIPTS
+         ============================================ -->
+    <script>
+        // ============================================
+        // MOBILE NAV TOGGLE
+        // ============================================
+        (function () {
+            const toggle = document.getElementById('navToggle');
+            const nav = document.getElementById('mainNav');
+            if (toggle && nav) {
+                toggle.addEventListener('click', function () {
+                    nav.classList.toggle('open');
+                });
+                // Close nav when a link is clicked
+                nav.querySelectorAll('a').forEach(function (link) {
+                    link.addEventListener('click', function () {
+                        nav.classList.remove('open');
+                    });
+                });
+            }
+        })();
+
+        // ============================================
+        // VIDEO HYBRID LOGIC
+        // ============================================
+        if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+            var thumbEl = document.getElementById('video-thumb');
+            var embedDiv = document.getElementById('video-embed');
+            if (thumbEl && embedDiv) {
+                thumbEl.style.display = 'none';
+                embedDiv.style.display = 'block';
+                var iframe = embedDiv.querySelector('iframe');
+                if (iframe) iframe.src = iframe.getAttribute('data-src');
+            }
+        }
+
+        // ============================================
+        // PROMPT CHIPS
+        // ============================================
+        (function () {
+            const chips = document.querySelectorAll('.prompt-chip');
+            const textarea = document.getElementById('promptInput');
+            chips.forEach(function (chip) {
+                chip.addEventListener('click', function () {
+                    textarea.value = chip.textContent;
+                    textarea.focus();
+                });
+            });
+        })();
+
+        // ============================================
+        // STORY GENERATION ENGINE
+        // ============================================
+        (function () {
+            const API_URL = 'https://not-omega-nanomind.hf.space';
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            const promptInput = document.getElementById('promptInput');
+            const generateBtn = document.getElementById('generateBtn');
+            const storyOutput = document.getElementById('storyOutput');
+            const storyText = document.getElementById('storyText');
+            const storyCursor = document.getElementById('storyCursor');
+            const metricSummary = document.getElementById('metricSummary');
+            const errorMessage = document.getElementById('errorMessage');
+            const copyBtn = document.getElementById('copyBtn');
+            const generateAgainBtn = document.getElementById('generateAgainBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const copyToast = document.getElementById('copyToast');
+
+            // Store the last generated text for copy
+            let lastGeneratedText = '';
+
+            // ---- Health Check ----
+            async function checkServerHealth() {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 4000);
+                    const response = await fetch(API_URL + '/health', { signal: controller.signal });
+                    clearTimeout(timeoutId);
+
+                    if (response.ok) {
+                        statusDot.className = 'status-dot online';
+                        statusText.textContent = 'Nano-Mind API Online';
+                        statusText.style.color = 'var(--green-dark)';
+                    } else {
+                        throw new Error('Not OK');
+                    }
+                } catch (error) {
+                    statusDot.className = 'status-dot offline';
+                    statusText.textContent = 'Nano-Mind API Offline — The inference server may be waking up';
+                    statusText.style.color = 'var(--red)';
+                }
+            }
+
+            checkServerHealth();
+            setInterval(checkServerHealth, 15000);
+
+            // ---- Typewriter Effect (visual presentation only) ----
+            async function typeWriter(text, element) {
+                element.textContent = '';
+                storyCursor.style.display = 'inline-block';
+                const chunks = text.match(/.{1,3}/g) || [];
+                for (let i = 0; i < chunks.length; i++) {
+                    element.textContent += chunks[i];
+                    await new Promise(r => setTimeout(r, Math.random() * 25 + 10));
+                }
+                storyCursor.style.display = 'none';
+            }
+
+            // ---- Generate ----
+            async function generateStory() {
+                const prompt = promptInput.value.trim();
+                if (!prompt) {
+                    promptInput.focus();
+                    return;
+                }
+
+                generateBtn.disabled = true;
+                generateBtn.textContent = 'Generating Story…';
+                errorMessage.style.display = 'none';
+                storyOutput.style.display = 'block';
+                storyText.textContent = '';
+                storyCursor.style.display = 'inline-block';
+                metricSummary.textContent = '—';
+                lastGeneratedText = '';
+
+                // Scroll to output
+                storyOutput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                try {
+                    const response = await fetch(API_URL + '/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt: prompt,
+                            max_tokens: parseInt(document.getElementById('maxTokens').value),
+                            temperature: parseFloat(document.getElementById('temperature').value),
+                            top_k: parseInt(document.getElementById('topK').value)
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('API Error: ' + response.statusText);
+                    }
+
+                    const data = await response.json();
+                    lastGeneratedText = data.generated_text;
+
+                    await typeWriter(data.generated_text, storyText);
+
+                    // Build metric summary
+                    const parts = [];
+                    if (data.tokens_out != null) parts.push(data.tokens_out + ' tokens');
+                    if (data.latency_ms != null) parts.push(data.latency_ms.toFixed(0) + ' ms');
+                    if (data.tokens_per_sec != null) parts.push(data.tokens_per_sec.toFixed(1) + ' t/s');
+                    metricSummary.textContent = parts.join(' · ') || '—';
+
+                } catch (error) {
+                    errorMessage.textContent = 'Error: ' + error.message + '. The Hugging Face space may be waking up. Please try again in a few seconds.';
+                    errorMessage.style.display = 'block';
+                    storyCursor.style.display = 'none';
+                } finally {
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Generate Story';
+                }
+            }
+
+            generateBtn.addEventListener('click', generateStory);
+
+            // Allow Ctrl+Enter to generate
+            promptInput.addEventListener('keydown', function (e) {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    e.preventDefault();
+                    generateStory();
+                }
+            });
+
+            // ---- Copy Story ----
+            copyBtn.addEventListener('click', function () {
+                if (!lastGeneratedText) return;
+                navigator.clipboard.writeText(lastGeneratedText).then(function () {
+                    copyToast.classList.add('visible');
+                    setTimeout(function () {
+                        copyToast.classList.remove('visible');
+                    }, 2000);
+                }).catch(function () {
+                    // Fallback
+                    const textarea = document.createElement('textarea');
+                    textarea.value = lastGeneratedText;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    copyToast.classList.add('visible');
+                    setTimeout(function () {
+                        copyToast.classList.remove('visible');
+                    }, 2000);
+                });
+            });
+
+            // ---- Generate Again ----
+            generateAgainBtn.addEventListener('click', generateStory);
+
+            // ---- Clear ----
+            clearBtn.addEventListener('click', function () {
+                storyOutput.style.display = 'none';
+                storyText.textContent = '';
+                metricSummary.textContent = '—';
+                lastGeneratedText = '';
+                errorMessage.style.display = 'none';
+                promptInput.value = '';
+                promptInput.focus();
+            });
+        })();
+    </script>
+</body>
+
+</html>
