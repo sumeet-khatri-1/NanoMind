@@ -9,7 +9,9 @@
         content="Nano-Mind is a lightweight GPT-2-style story generation model powered by a custom C++17 inference engine with AVX2/FMA optimization. Generate stories directly in your browser.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:ital@0;1&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Lora:ital@0;1&display=swap"
+        rel="stylesheet">
     <style>
         /* ============================================
            DESIGN SYSTEM
@@ -512,6 +514,7 @@
                 opacity: 0;
                 transform: translateY(12px);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -561,8 +564,15 @@
         }
 
         @keyframes cursorBlink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
         }
 
         .story-metrics {
@@ -975,7 +985,7 @@
             background: var(--bg-subtle);
             padding: 1rem;
             border-radius: 10px;
-            border: 2px solid rgba(0,0,0,0.06);
+            border: 2px solid rgba(0, 0, 0, 0.06);
         }
 
         .perf-note strong {
@@ -1443,8 +1453,8 @@
 
             <div>
                 <label for="promptInput" class="prompt-label">Story Idea</label>
-                <textarea id="promptInput" class="prompt-textarea"
-                    placeholder="Enter a story idea…" aria-label="Enter your story idea"></textarea>
+                <textarea id="promptInput" class="prompt-textarea" placeholder="Enter a story idea…"
+                    aria-label="Enter your story idea"></textarea>
 
                 <div class="prompt-chips" role="group" aria-label="Example story prompts">
                     <button class="prompt-chip" type="button">mystery in an old house</button>
@@ -1929,11 +1939,17 @@
             // Store the last generated text for copy
             let lastGeneratedText = '';
 
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
             // ---- Health Check ----
             async function checkServerHealth() {
                 try {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 4000);
+                    const timeoutId = setTimeout(() => controller.abort(), 8000);
                     const response = await fetch(API_URL + '/health', { signal: controller.signal });
                     clearTimeout(timeoutId);
 
@@ -1954,7 +1970,7 @@
             checkServerHealth();
             setInterval(checkServerHealth, 15000);
 
-            // ---- Typewriter Effect (visual presentation only) ----
+            // ---- Fallback Typewriter Effect (for non-streaming single responses) ----
             async function typeWriter(text, element) {
                 element.textContent = '';
                 storyCursor.style.display = 'inline-block';
@@ -1978,10 +1994,15 @@
                 generateBtn.textContent = 'Generating Story…';
                 errorMessage.style.display = 'none';
                 storyOutput.style.display = 'block';
-                storyText.textContent = '';
+                metricSummary.textContent = 'Connecting…';
+                lastGeneratedText = prompt;
+
+                // Setup story container with styled prompt and blinking cursor
+                storyText.innerHTML = '<span style="color: var(--text-muted); font-weight: 500;">' + escapeHtml(prompt) + '</span><span id="storyStreamSpan"></span>';
+                storyText.appendChild(storyCursor);
                 storyCursor.style.display = 'inline-block';
-                metricSummary.textContent = '—';
-                lastGeneratedText = '';
+
+                const streamSpan = document.getElementById('storyStreamSpan');
 
                 // Scroll to output
                 storyOutput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1999,26 +2020,183 @@
                     });
 
                     if (!response.ok) {
-                        throw new Error('API Error: ' + response.statusText);
+                        let errText = '';
+                        try {
+                            errText = await response.text();
+                        } catch (_) {}
+                        throw new Error(`Server returned HTTP ${response.status} (${response.statusText || 'Error'})${errText ? ': ' + errText.slice(0, 150) : ''}`);
                     }
 
-                    const data = await response.json();
-                    lastGeneratedText = data.generated_text;
+                    metricSummary.textContent = 'Streaming tokens…';
 
-                    await typeWriter(data.generated_text, storyText);
+                    let tokensOut = 0;
+                    let metrics = null;
+
+                    // Handle SSE Streaming (text/event-stream)
+                    if (response.body && response.body.getReader) {
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop(); // keep last incomplete line
+
+                            for (const rawLine of lines) {
+                                const line = rawLine.trim();
+                                if (!line) continue;
+
+                                if (line.startsWith('data:')) {
+                                    const jsonStr = line.slice(5).trim();
+                                    if (!jsonStr) continue;
+                                    try {
+                                        const data = JSON.parse(jsonStr);
+                                        if (data.error) {
+                                            throw new Error(data.error);
+                                        }
+                                        if (data.token !== undefined) {
+                                            tokensOut++;
+                                            streamSpan.textContent += data.token;
+                                            lastGeneratedText += data.token;
+                                        } else if (data.generated_text !== undefined) {
+                                            const gen = data.generated_text.startsWith(prompt)
+                                                ? data.generated_text.slice(prompt.length)
+                                                : data.generated_text;
+                                            streamSpan.textContent = gen;
+                                            lastGeneratedText = prompt + gen;
+                                        }
+                                        if (data.metrics) {
+                                            metrics = data.metrics;
+                                        }
+                                    } catch (parseErr) {
+                                        if (parseErr.message && !parseErr.message.includes('JSON')) {
+                                            throw parseErr;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Flush remaining buffer
+                        if (buffer && buffer.trim()) {
+                            const trimmed = buffer.trim();
+                            if (trimmed.startsWith('data:')) {
+                                const jsonStr = trimmed.slice(5).trim();
+                                if (jsonStr) {
+                                    try {
+                                        const data = JSON.parse(jsonStr);
+                                        if (data.error) throw new Error(data.error);
+                                        if (data.token !== undefined) {
+                                            tokensOut++;
+                                            streamSpan.textContent += data.token;
+                                            lastGeneratedText += data.token;
+                                        } else if (data.generated_text !== undefined) {
+                                            const gen = data.generated_text.startsWith(prompt)
+                                                ? data.generated_text.slice(prompt.length)
+                                                : data.generated_text;
+                                            streamSpan.textContent = gen;
+                                            lastGeneratedText = prompt + gen;
+                                        }
+                                        if (data.metrics) metrics = data.metrics;
+                                    } catch (e) {
+                                        if (e.message && !e.message.includes('JSON')) throw e;
+                                    }
+                                }
+                            } else if (tokensOut === 0) {
+                                // Might be plain JSON fallback
+                                try {
+                                    const data = JSON.parse(trimmed);
+                                    if (data.generated_text) {
+                                        const gen = data.generated_text.startsWith(prompt)
+                                            ? data.generated_text.slice(prompt.length)
+                                            : data.generated_text;
+                                        streamSpan.textContent = gen;
+                                        lastGeneratedText = prompt + gen;
+                                    }
+                                    if (data.tokens_out) tokensOut = data.tokens_out;
+                                    if (data.metrics) metrics = data.metrics;
+                                } catch (_) {}
+                            }
+                        }
+                    } else {
+                        // Fallback when ReadableStream reader is not available
+                        const rawText = await response.text();
+                        if (rawText.includes('data:')) {
+                            const lines = rawText.split('\n');
+                            for (const rawLine of lines) {
+                                const line = rawLine.trim();
+                                if (!line || !line.startsWith('data:')) continue;
+                                const jsonStr = line.slice(5).trim();
+                                if (!jsonStr) continue;
+                                try {
+                                    const data = JSON.parse(jsonStr);
+                                    if (data.error) throw new Error(data.error);
+                                    if (data.token !== undefined) {
+                                        tokensOut++;
+                                        streamSpan.textContent += data.token;
+                                        lastGeneratedText += data.token;
+                                    } else if (data.generated_text !== undefined) {
+                                        const gen = data.generated_text.startsWith(prompt)
+                                            ? data.generated_text.slice(prompt.length)
+                                            : data.generated_text;
+                                        streamSpan.textContent = gen;
+                                        lastGeneratedText = prompt + gen;
+                                    }
+                                    if (data.metrics) metrics = data.metrics;
+                                } catch (e) {
+                                    if (e.message && !e.message.includes('JSON')) throw e;
+                                }
+                            }
+                        } else {
+                            const data = JSON.parse(rawText);
+                            if (data.generated_text) {
+                                const gen = data.generated_text.startsWith(prompt)
+                                    ? data.generated_text.slice(prompt.length)
+                                    : data.generated_text;
+                                await typeWriter(gen, streamSpan);
+                                lastGeneratedText = prompt + gen;
+                            }
+                            if (data.tokens_out) tokensOut = data.tokens_out;
+                            if (data.metrics) metrics = data.metrics;
+                        }
+                    }
 
                     // Build metric summary
                     const parts = [];
-                    if (data.tokens_out != null) parts.push(data.tokens_out + ' tokens');
-                    if (data.latency_ms != null) parts.push(data.latency_ms.toFixed(0) + ' ms');
-                    if (data.tokens_per_sec != null) parts.push(data.tokens_per_sec.toFixed(1) + ' t/s');
-                    metricSummary.textContent = parts.join(' · ') || '—';
+                    const count = tokensOut || (metrics && metrics.tokens_out);
+                    if (count) {
+                        parts.push(count + ' tokens');
+                    }
+                    const totalMs = metrics ? (metrics.e2e_ms || metrics.latency_ms) : null;
+                    if (totalMs != null) {
+                        parts.push(Math.round(totalMs) + ' ms');
+                    }
+                    const tps = metrics
+                        ? (metrics.tokens_per_sec || (metrics.decode_ms > 0 && count ? (count / (metrics.decode_ms / 1000)).toFixed(1) : (totalMs > 0 && count ? (count / (totalMs / 1000)).toFixed(1) : null)))
+                        : null;
+                    if (tps) {
+                        parts.push(tps + ' t/s');
+                    }
+                    const ttft = metrics ? (metrics.ttft_client_ms || metrics.ttft_ms) : null;
+                    if (ttft) {
+                        parts.push(ttft + ' ms TTFT');
+                    }
+                    metricSummary.textContent = parts.join(' · ') || (tokensOut > 0 ? tokensOut + ' tokens' : '—');
 
                 } catch (error) {
-                    errorMessage.textContent = 'Error: ' + error.message + '. The Hugging Face space may be waking up. Please try again in a few seconds.';
+                    const isWakingUp = error.message.includes('Failed to fetch') || error.message.includes('NetworkError') || error.message.includes('503') || error.message.includes('waking up');
+                    if (isWakingUp) {
+                        errorMessage.textContent = 'Error: ' + error.message + '. The Hugging Face space may be waking up. Please try again in a few seconds.';
+                    } else {
+                        errorMessage.textContent = 'Error: ' + error.message;
+                    }
                     errorMessage.style.display = 'block';
-                    storyCursor.style.display = 'none';
                 } finally {
+                    storyCursor.style.display = 'none';
                     generateBtn.disabled = false;
                     generateBtn.textContent = 'Generate Story';
                 }
